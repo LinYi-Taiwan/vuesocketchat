@@ -151,19 +151,9 @@
                 var sender, user_name, change_type, name_list
 
                 switch (msg.type) {
-                    case 'system':
-                        sender = '系统消息: '
-                        break
                     case 'user':
                         this.chat_content.push({ from: msg.from, content: msg.content })
                         break
-                    case 'handshake':
-                        var user_info = {
-                            type: 'login',
-                            content: this.user_name,
-                        }
-                        // this.wsSend(user_info)
-                        return
                     case 'login':
                         user_name = msg.content
                         name_list = msg.user_list
@@ -175,7 +165,6 @@
                         name_list = msg.user_list
                         change_type = msg.type
                         this.dealUser(user_name, change_type, name_list)
-
                         return
                 }
             },

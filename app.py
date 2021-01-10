@@ -17,7 +17,6 @@ def index():
 @socketio.on("message")
 def handleMessage(message):
     data = json.loads(message)
-    print(data)
     message = ''
     if data['type']=='login':
         USERS.add(data['content'])
@@ -39,5 +38,4 @@ def handleMessage(message):
 
 
 if __name__ == "__main__":
-    print('name')
-    socketio.run(app, debug=True, host='0.0.0.0', port=1234)
+    socketio.run(app, host='0.0.0.0', port=1234)
