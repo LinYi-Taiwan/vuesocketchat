@@ -1,13 +1,373 @@
-<div id="chat"></div>
-<input id="chat-input" type="text" /> <button onclick="sendMessage()">Send Message</button>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.js"></script>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>chat_room</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no user-scalable=0" />
+        <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+        <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue-socket.io@3.0.10/dist/vue-socketio.min.js"></script>
+    </head>
+
+    <body>
+        <div id="app">
+            <div class="user-bar">
+                <div class="user-img">我</div>
+                <div class="user-name">[[user_name]]</div>
+            </div>
+            <div class="room">
+                <div class="title">chat room</div>
+                <div class="chat-box">
+                    <div class="online-box">
+                        <div class="online-num">
+                            <div></div>
+                            目前在線用戶([[this.member_num]])
+                        </div>
+                        <div class="online-members" v-for="(i,index) in members" :key="index">
+                            <div class="online-member-img">訪客</div>
+                            <div class="msg-from">[[i]]</div>
+                        </div>
+                    </div>
+                    <div class="content-box">
+                        <div class="up" ref="up">
+                            <div
+                                :class="{'self-msg-position':i.from === user_name,'system-msg-position':i.from==='system'}"
+                                class="content"
+                                v-for="(i, index) in chat_content"
+                                :key="index"
+                            >
+                                <div class="visitor" v-if="checkFrom(i.from)==='visitor'">
+                                    <div class="sticker">訪客</div>
+                                    <div>
+                                        <div class="msg-from">[[i.from]]</div>
+                                        <div class="msg">[[i.content]]</div>
+                                    </div>
+                                </div>
+                                <div v-if="checkFrom(i.from)!=='visitor'">
+                                    <div class="msg" :class="[i.from==='system'?'system-msg' : 'self-msg']">
+                                        [[i.content]]
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <textarea
+                            v-model="text"
+                            placeholder="請輸入內容..."
+                            @keydown.enter.exact.prevent
+                            @keydown.enter="wsSend({'type':'send','content':text,'name':user_name})"
+                        ></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
 <script>
-    var socket = io()
-    function sendMessage() {
-        socket.emit('message', document.getElementById('chat-input').value)
-    }
-    socket.on('new_message', (data) => {
-        document.getElementById('chat').innerHTML += '<br>' + data
-        console.log(socket)
+    var app = new Vue({
+        el: '#app',
+        data: {
+            ws: null,
+            user_name: '',
+            members: [],
+            chat_content: [],
+            text: '',
+        },
+        delimiters: ['[[', ']]'],
+
+        created() {
+            window.addEventListener('beforeunload', (e) => this.beforeunloadFn(e))
+
+            this.initWebSocket()
+        },
+        destroyed() {
+            window.removeEventListener('beforeunload', (e) => this.beforeunloadFn(e))
+        },
+        computed: {
+            member_num() {
+                return this.members.length
+            },
+        },
+        watch: {
+            chat_content: function () {
+                this.$refs['up'].scrollTop = this.$refs['up'].scrollHeight
+            },
+        },
+        mounted() {
+            const that = this
+            this.ws.on('new_message', function (e) {
+                console.log(e)
+                that.wsOnMessage(e)
+            })
+        },
+        methods: {
+            checkName() {
+                this.user_name = prompt('請輸入使用者名稱(最多三字)')
+
+                if (this.user_name.length === 0 || this.user_name.length > 3) {
+                    this.checkName()
+                }
+            },
+
+            beforeunloadFn(e) {
+                var user_info = {
+                    type: 'logout',
+                    content: this.user_name,
+                }
+                this.wsSend(user_info)
+                this.ws.disconnect()
+            },
+            initWebSocket() {
+                this.checkName()
+                this.ws = io.connect()
+                let actions = { type: 'login', content: this.user_name }
+                this.wsSend(actions)
+            },
+            wsOnError(e) {
+                console.log(e)
+                this.initWebSocket()
+            },
+            wsOnMessage(e) {
+                msg = JSON.parse(e)
+
+                var sender, user_name, change_type, name_list
+
+                switch (msg.type) {
+                    case 'system':
+                        sender = '系统消息: '
+                        break
+                    case 'user':
+                        this.chat_content.push({ from: msg.from, content: msg.content })
+                        break
+                    case 'handshake':
+                        var user_info = {
+                            type: 'login',
+                            content: this.user_name,
+                        }
+                        // this.wsSend(user_info)
+                        return
+                    case 'login':
+                        user_name = msg.content
+                        name_list = msg.user_list
+                        change_type = msg.type
+                        this.dealUser(user_name, change_type, name_list)
+                        return
+                    case 'logout':
+                        user_name = msg.content
+                        name_list = msg.user_list
+                        change_type = msg.type
+                        this.dealUser(user_name, change_type, name_list)
+
+                        return
+                }
+            },
+            wsSend(Data) {
+                if (this.text === '' && Data.type === 'send') return
+                this.ws.emit('message', JSON.stringify(Data))
+                this.text = ''
+            },
+            dealUser(user_name, change_type, name_list) {
+                let status = change_type === 'login' ? '上線' : '下線'
+                this.members = name_list
+                this.chat_content.push({ from: 'system', content: '系統消息：' + user_name + '已' + status })
+            },
+            wsClose(e) {
+                this.ws.disconnect()
+            },
+            checkFrom(status) {
+                if (status === this.user_name || status === 'system') {
+                    return ''
+                } else {
+                    return 'visitor'
+                }
+            },
+        },
     })
 </script>
+
+<style>
+    html,
+    body,
+    div,
+    span,
+    applet,
+    object,
+    p,
+    iframe {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font-size: 100%;
+        font: inherit;
+        vertical-align: baseline;
+    }
+    #app {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+    }
+    .user-bar {
+        background-color: #94a1c4;
+        height: 100%;
+        width: 14.6vw;
+        padding-top: 55px;
+    }
+    .user-img {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background-color: #ffffff;
+        margin: 0 auto;
+        line-height: 88px;
+        text-align: center;
+    }
+    .user-name {
+        font-size: 14px;
+        color: #ffffff;
+        letter-spacing: 0.28px;
+        margin: 10px auto;
+        text-align: center;
+    }
+    .room {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .title {
+        width: 100%;
+        height: 88px;
+        object-fit: contain;
+        box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.25);
+        background-color: #ffffff;
+        text-align: center;
+        line-height: 88px;
+        font-size: 28px;
+        color: #94a1c4;
+    }
+    .chat-box {
+        width: 100%;
+        height: 100%;
+        display: flex;
+    }
+    .online-box {
+        background-color: #eceef4;
+        height: 100%;
+        width: 176px;
+    }
+    .online-num {
+        font-size: 14px;
+        text-align: center;
+        color: #848484;
+        letter-spacing: 0.28px;
+        margin: 26px 0;
+        display: flex;
+        justify-content: center;
+    }
+    .online-num div {
+        border-radius: 50%;
+        background-color: #91ff68;
+        width: 7px;
+        height: 7px;
+        margin: auto 3px;
+    }
+    .online-members {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 32px;
+        margin: 7.5px 0;
+    }
+    .content-box {
+        width: 100%;
+        height: 100%;
+        padding-top: 20px;
+    }
+    .up {
+        height: calc(100% - 174px);
+        overflow: auto;
+        padding: 0 23px;
+    }
+    .content-box textarea {
+        height: 86px;
+        width: 100%;
+        resize: none;
+        border: none;
+        box-shadow: 0 0 9px 0 rgba(0, 0, 0, 0.25);
+    }
+    textarea {
+        padding: 10px;
+        font-size: 14px;
+    }
+    textarea:focus {
+        outline: none;
+    }
+    .content {
+        width: 100%;
+        display: flex;
+        margin: 0 0 15px 0;
+        word-break: break-all;
+    }
+    .sticker,
+    .online-member-img {
+        border-radius: 50%;
+        background-color: lightgray;
+        text-align: center;
+    }
+    .sticker {
+        width: 44px;
+        height: 44px;
+        line-height: 44px;
+    }
+    .online-member-img {
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+        font-size: 10px;
+        margin-left: 26px;
+        margin-right: 12px;
+    }
+    .msg-from {
+        font-size: 14px;
+        color: #848484;
+        letter-spacing: 0.28px;
+    }
+    .system-msg,
+    .msg {
+        width: auto;
+        max-width: 413px;
+        background-color: #ebecee;
+        padding: 12px 13px;
+        color: #848484;
+        font-size: 14px;
+        word-break: break-all;
+        border-radius: 15px;
+    }
+    .system-msg-position {
+        justify-content: center;
+    }
+    .system-msg {
+    }
+    .self-msg-position {
+        justify-content: flex-end;
+    }
+    .self-msg {
+        border-bottom-right-radius: 0px;
+        background-color: #94a1c4;
+        color: #ffffff;
+        word-break: break-all;
+    }
+    .visitor {
+        display: flex;
+    }
+    .visitor div .msg {
+        border-top-left-radius: 0px;
+    }
+    .visitor div .msg-from {
+        font-size: 12px;
+        letter-spacing: 0.24px;
+        color: #848484;
+    }
+    .visitor > div:nth-child(2) {
+        margin-left: 11px;
+    }
+</style>
