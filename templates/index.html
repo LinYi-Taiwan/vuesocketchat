@@ -8,6 +8,7 @@
         <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/vue-socket.io@3.0.10/dist/vue-socketio.min.js"></script>
+        <link rel="stylesheet" href="" />
     </head>
 
     <body>
@@ -17,9 +18,15 @@
                 <div class="user-name">[[user_name]]</div>
             </div>
             <div class="room">
-                <div class="title">chat room</div>
+                <div class="title">
+                    <div>chat room</div>
+                    <div @click="openOnlineBox()">
+                        <div></div>
+                        有[[members.length]]人在線上 >
+                    </div>
+                </div>
                 <div class="chat-box">
-                    <div class="online-box">
+                    <div class="online-box slide-top" v-if="onlineBox">
                         <div class="online-num">
                             <div></div>
                             目前在線用戶([[this.member_num]])
@@ -72,12 +79,16 @@
             members: [],
             chat_content: [],
             text: '',
+            onlineBox: false,
         },
         delimiters: ['[[', ']]'],
 
         created() {
             window.addEventListener('beforeunload', (e) => this.beforeunloadFn(e))
-
+            console.log(window.screen.width)
+            if (window.screen.width >= 800) {
+                this.onlineBox = true
+            }
             this.initWebSocket()
         },
         destroyed() {
@@ -181,6 +192,9 @@
                     return 'visitor'
                 }
             },
+            openOnlineBox() {
+                this.onlineBox = !this.onlineBox
+            },
         },
     })
 </script>
@@ -200,6 +214,7 @@
         font-size: 100%;
         font: inherit;
         vertical-align: baseline;
+        font-family: YuGothic;
     }
     #app {
         width: 100vw;
@@ -234,15 +249,32 @@
     }
 
     .title {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
         width: 100%;
         height: 88px;
         object-fit: contain;
         box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.25);
         background-color: #ffffff;
-        text-align: center;
-        line-height: 88px;
         font-size: 28px;
         color: #94a1c4;
+    }
+    .title div {
+        height: auto;
+    }
+    .title > div:nth-child(2) > div {
+        border-radius: 50%;
+        background-color: #91ff68;
+        width: 7px;
+        height: 7px;
+        margin: auto 3px;
+    }
+    .title > div:nth-child(2) {
+        font-size: 10px;
+        display: flex;
+        cursor: pointer;
     }
     .chat-box {
         width: 100%;
@@ -253,6 +285,7 @@
         background-color: #eceef4;
         height: 100%;
         width: 176px;
+        z-index: -1;
     }
     .online-num {
         font-size: 14px;
@@ -369,5 +402,88 @@
     }
     .visitor > div:nth-child(2) {
         margin-left: 11px;
+    }
+
+    @media screen and (max-width: 800px) {
+        html {
+            overflow: hidden;
+        }
+        .user-bar {
+            display: none;
+        }
+        .title {
+            height: 10vh;
+            font-size: 5vw;
+            background-color: #94a1c4;
+            color: #ffffff;
+        }
+        .title > div:nth-child(2) > div {
+            margin: auto 3vw;
+        }
+        .title > div:nth-child(2) {
+            font-size: 2vw;
+            display: flex;
+        }
+        .online-box {
+            /* display: none; */
+            position: absolute;
+            height: 100%;
+            right: 0;
+            z-index: 10;
+            width: 60vw;
+            background-color: rgba(255, 255, 255, 0.78);
+        }
+        .online-members {
+            margin: 2.1vw 0;
+            height: auto;
+        }
+        .online-member-img {
+            width: 8.8vw;
+            height: 8.8vw;
+            line-height: 8.8vw;
+            margin: 0 3.3vw 0 6.6vw;
+        }
+        .msg-from {
+            font-size: 3.88vw;
+        }
+        .content-box textarea {
+            height: 9.5vh;
+            font-size: 4.8vw;
+            padding: 4.75%;
+            line-height: 4vh;
+        }
+        .up {
+            height: 80.3125%;
+            padding: 0;
+            padding: 0 18px;
+        }
+        .msg {
+            max-width: 243px;
+        }
+        .slide-top {
+            -webkit-animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+            animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+        }
+
+        @-webkit-keyframes slide-top {
+            0% {
+                -webkit-transform: translateX(20px);
+                transform: translateX(20px);
+            }
+            100% {
+                -webkit-transform: translateX(0px);
+                transform: translateX(0px);
+            }
+        }
+        @keyframes slide-top {
+            0% {
+                -webkit-transform: translateX(20px);
+                transform: translateX(20px);
+            }
+            100% {
+                -webkit-transform: translateX(0px);
+                transform: translateX(0px);
+            }
+        }
     }
 </style>
