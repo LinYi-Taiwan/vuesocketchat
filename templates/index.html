@@ -58,12 +58,19 @@
                                 </div>
                             </div>
                         </div>
-                        <textarea
-                            v-model="text"
-                            placeholder="請輸入內容..."
-                            @keydown.enter.exact.prevent
-                            @keydown.enter="wsSend({'type':'send','content':text,'name':user_name})"
-                        ></textarea>
+                        <div class="textarea-box">
+                            <textarea
+                                v-model="text"
+                                placeholder="請輸入內容..."
+                                @keydown.enter.exact.prevent
+                                @keydown.enter="wsSend({'type':'send','content':text,'name':user_name})"
+                            ></textarea>
+                            <div
+                                v-if="!onlineBox"
+                                @click="wsSend({'type':'send','content':text,'name':user_name})"
+                                class="send"
+                            ></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -320,12 +327,16 @@
         overflow: auto;
         padding: 0 23px;
     }
+    .textarea-box {
+        display: flex;
+        width: 100%;
+        height: auto;
+        box-shadow: 0 0 9px 0 rgba(0, 0, 0, 0.25);
+    }
     .content-box textarea {
         height: 86px;
-        width: 100%;
         resize: none;
         border: none;
-        box-shadow: 0 0 9px 0 rgba(0, 0, 0, 0.25);
     }
     textarea {
         padding: 10px;
@@ -446,12 +457,21 @@
         .msg-from {
             font-size: 3.88vw;
         }
+        .textarea-box {
+            box-shadow: 0 0 9px 0 rgba(0, 0, 0, 0.25);
+        }
+        .send {
+            width: 50px;
+            height: 50px;
+            background: url('../static/send.png') center;
+            background-size: cover;
+        }
         .content-box textarea {
             height: 9.5vh;
             font-size: 4.8vw;
             padding: 4.75%;
             line-height: 4vh;
-            box-shadow: 0 0 9px 0 rgba(0, 0, 0, 0.25);
+            width: 86vw;
         }
         .up {
             height: 80.3125%;
